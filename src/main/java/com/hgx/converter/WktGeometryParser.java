@@ -36,6 +36,22 @@ public class WktGeometryParser {
         }
     }
 
+    /**
+     * 判断字符串是否可能是有效的 WKT 几何
+     */
+    public boolean canParse(String wkt) {
+        if (wkt == null || wkt.trim().isEmpty()) {
+            return false;
+        }
+        String trimmedWkt = wkt.trim();
+        if (trimmedWkt.startsWith("\"") && trimmedWkt.endsWith("\"") || trimmedWkt.startsWith("'") && trimmedWkt.endsWith("'")) {
+            trimmedWkt = trimmedWkt.substring(1, trimmedWkt.length() - 1);
+        }
+        String upper = trimmedWkt.toUpperCase();
+        return upper.startsWith("POINT") || upper.startsWith("LINESTRING") || upper.startsWith("POLYGON")
+                || upper.startsWith("MULTIPOINT") || upper.startsWith("MULTILINESTRING") || upper.startsWith("MULTIPOLYGON");
+    }
+
     public GeometryType detectGeometryType(String wkt) {
         if (wkt == null || wkt.trim().isEmpty()) {
             return null;

@@ -1,5 +1,7 @@
 package com.hgx.converter.toshape;
 
+import com.hgx.converter.StreamingReader;
+import com.hgx.converter.WktGeometryParser;
 import com.hgx.model.FeatureData;
 import com.hgx.model.GeometryType;
 import org.geotools.data.DefaultTransaction;
@@ -101,6 +103,80 @@ public class ShapefileWriter {
         } finally {
             transaction.close();
             dataStore.dispose();
+        }
+    }
+
+    /**
+     * 流式写入，边收数据边分批写入，不驻留全量内存。
+     * @param reader 数据源（流式读取器）
+     * @param outputFile 输出文件
+     * @param geometryType 几何类型
+     * @param attributeColumns 属性列名
+     * @param encoding 编码
+     * @param geometryParser 几何解析器（用于解析 WKT）
+     * @param geometryColumnIndex 几何列索引
+     * @throws IOException if write error occurs
+     */
+    public void writeStream(StreamingReader reader, File outputFile,
+                           GeometryType geometryType, List<String> attributeColumns,
+                           String encoding,
+                            WktGeometryParser geometryParser,
+                           int geometryColumnIndex)
+            throws Exception {
+
+        SimpleFeatureType schema = buildFeatureType(geometryType, attributeColumns);
+
+        ShapefileDataStoreFactory factory = new ShapefileDataStoreFactory();
+        Map<String, Serializable> params = new HashMap<>();
+        params.put("url", outputFile.toURI().toURL());
+        params.put("create spatial index", Boolean.TRUE);
+        params.put("charset", encoding);
+
+        ShapefileDataStore dataStore = (ShapefileDataStore) factory.createDataStore(params);
+        dataStore.setCharset(Charset.forName(encoding));
+        dataStore.createSchema(schema);
+
+        createCpgFile(outputFile, encoding);
+
+        Transaction transaction = new DefaultTransaction();
+        try {
+            String typeName = dataStore.getTypeNames()[0];
+            SimpleFeatureSource featureSource = dataStore.getFeatureSource(typeName);
+            SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSource;
+            featureStore.setTransaction(transaction);
+
+            List<SimpleFeature> batch = new ArrayList<>(BATCH_SIZE);
+            final int[] fid = {0};
+
+            reader.readStream(feature -> {
+                String wkt = feature.getAttributeValues()[geometryColumnIndex];
+                Geometry geometry = geometryParser.parse
+                        (wkt);
+                if (geometry != null) {
+                    feature.setGeometry(geometry);
+                    SimpleFeature simpleFeature = buildFeature(schema, feature, attributeColumns, fid[0]++);
+                    batch.add(simpleFeature);
+
+                    if (batch.size() >= BATCH_SIZE) {
+                        flushBatch(featureStore, batch);
+                        batch.clear();
+                    }
+                }
+            });
+
+            if (!batch.isEmpty()) {
+                flushBatch(featureStore, batch);
+            }
+
+            transaction.commit();
+
+        } catch (IOException e) {
+            transaction.rollback();
+            throw e;
+        } finally {
+            transaction.close();
+            dataStore.dispose();
+            reader.close();
         }
     }
 

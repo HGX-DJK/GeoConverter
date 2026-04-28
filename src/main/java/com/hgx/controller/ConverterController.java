@@ -105,7 +105,8 @@ public class ConverterController {
 
     @PostMapping("/convert-from-shapefile")
     public ResponseEntity<Resource> convertFromShapefile(
-            @RequestPart("file") List<MultipartFile> files,
+            @RequestPart("file")
+            List<MultipartFile> files,
             @RequestParam("outputFormat") String outputFormat,
             @RequestParam(value = "encoding", defaultValue = "UTF-8") String encoding) throws Exception {
 

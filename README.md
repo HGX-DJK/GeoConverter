@@ -1,6 +1,6 @@
-# ConvertDataToShp
+# GeoConverter
 
-CSV / Excel 与 Shapefile 格式互转工具。
+地理数据格式转换工具，支持 CSV、Excel 与 ESRI Shapefile（SHP）之间的双向转换。
 
 ## 功能
 
@@ -9,6 +9,7 @@ CSV / Excel 与 Shapefile 格式互转工具。
 - **SHP → CSV**：将 Shapefile 转换为 CSV 文件
 - **SHP → Excel**：将 Shapefile 转换为 Excel 文件
 - 支持 GBK / UTF-8 / GB2312 编码
+- **流式处理**：大数据量文件采用游标模式，边读边写，避免内存溢出
 
 ## 快速开始
 
@@ -61,6 +62,38 @@ mvn spring-boot:run
 
 编码选择错误会导致中文乱码。
 
+## 性能优化
+
+### 流式处理架构
+
+针对大数据量场景，采用了流式处理（Streaming）架构，核心特点：
+
+- **边读边写**：采用游标模式读取数据，无需一次性加载全部数据到内存
+- **批量写入**：每 10000 条数据自动批量写入 Shp 文件
+- **内存友好**：内存占用稳定，不随数据量增长而增长
+
+```
+处理流程：
+┌──────────────────────┐
+│ 阶段1: 检测几何列      │  ← 采样读取，找到即停
+│   (流式读取器)        │
+└──────────────────────┘
+           ↓ 重新打开
+┌──────────────────────┐
+│ 阶段2: 检测几何类型    │  ← 采样前100行
+│   (流式读取器)        │
+└──────────────────────┘
+           ↓ 再次重新打开
+┌──────────────────────┐
+│ 阶段3: 流式写入        │  ← 边读边写，分批flush
+│   (流式写入器)        │
+└──────────────────────┘
+```
+
+### 支持的数据规模
+
+理论上无限制，实际受磁盘空间和系统资源限制。实测百万级数据可正常处理。
+
 ## 项目结构
 
 ```
@@ -70,16 +103,17 @@ src/main/java/com/hgx/
 ├── controller/
 │   └── ConverterController.java   # Web API 控制器
 ├── service/
-│   └── ConverterService.java      # 转换服务核心逻辑
+│   └── ConverterService.java      # 转换服务核心逻辑（流式处理）
 ├── converter/
 │   ├── DataReader.java           # 数据读取接口
 │   ├── DataWriter.java           # 数据写入接口
+│   ├── StreamingReader.java      # 流式读取接口（新增）
 │   ├── WktGeometryParser.java    # WKT 几何解析器
 │   ├── GeometryColumnDetector.java# 几何列自动检测
 │   ├── toshape/                  # CSV/Excel → SHP
-│   │   ├── CsvDataReader.java
-│   │   ├── ExcelDataReader.java
-│   │   └── ShapefileWriter.java
+│   │   ├── StreamingCsvReader.java   # CSV 流式读取（新增）
+│   │   ├── StreamingExcelReader.java# Excel 流式读取（新增）
+│   │   └── ShapefileWriter.java     # SHP 写入（含流式写入方法）
 │   └── fromshape/                # SHP → CSV/Excel
 │       ├── ShapefileReader.java
 │       ├── CsvDataWriter.java
