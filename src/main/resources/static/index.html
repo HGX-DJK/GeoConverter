@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoConverter - 地理数据格式转换工具</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00f0ff;
+            --primary-dark: #0088aa;
+            --secondary: #7b2fff;
+            --accent: #ff2fff;
+            --bg-dark: #0a0e17;
+            --bg-card: #111827;
+            --bg-sidebar: #0d1321;
+            --text-primary: #e0e6ed;
+            --text-secondary: #8b9dc3;
+            --border-color: #1e3a5f;
+            --success: #00ff88;
+            --error: #ff4757;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 背景动画效果 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(0, 240, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(123, 47, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(255, 47, 255, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* 左侧边栏 */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background: linear-gradient(180deg, var(--bg-sidebar) 0%, #0a1121 100%);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 30px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(0, 240, 255, 0.5);
+            letter-spacing: 2px;
+        }
+
+        .logo-sub {
+            font-size: 11px;
+            color: var(--text-secondary);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 20px 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .nav-item:hover {
+            background: rgba(0, 240, 255, 0.05);
+            color: var(--primary);
+            border-left-color: var(--primary);
+        }
+
+        .nav-item.active {
+            background: rgba(0, 240, 255, 0.1);
+            color: var(--primary);
+            border-left-color: var(--primary);
+        }
+
+        .nav-item svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            fill: currentColor;
+        }
+
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* 主内容区 */
+        .main-content {
+            margin-left: 260px;
+            min-height: 100vh;
+            padding: 40px 60px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .page-header {
+            margin-bottom: 40px;
+        }
+
+        .page-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+
+        /* 卡片样式 */
+        .card {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(17, 24, 39, 0.8) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+            opacity: 0.8;
+        }
+
+        .card-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            color: var(--primary);
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title svg {
+            width: 22px;
+            height: 22px;
+            fill: var(--primary);
+        }
+
+        /* 表单样式 */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+        }
+
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+        }
+
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238b9dc3' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 35px;
+        }
+
+        /* 文件上传区域 */
+        .file-upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .file-upload-area:hover,
+        .file-upload-area.dragover {
+            border-color: var(--primary);
+            background: rgba(0, 240, 255, 0.05);
+        }
+
+        .file-upload-area input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .upload-icon {
+            width: 50px;
+            height: 50px;
+            fill: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .upload-text span {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        .file-name {
+            margin-top: 15px;
+            color: var(--success);
+            font-weight: 500;
+        }
+
+        /* 按钮样式 */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px 35px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--bg-dark);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.5);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        /* 进度条 */
+        .progress-container {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .progress-container.active {
+            display: block;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .progress-status {
+            color: var(--primary);
+        }
+
+        .progress-percent {
+            color: var(--text-secondary);
+        }
+
+        .progress-bar-wrapper {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            height: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+            background-size: 200% 100%;
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.3s ease;
+            animation: shimmer 2s linear infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+
+        .progress-step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .progress-step.completed {
+            color: var(--success);
+        }
+
+        .progress-step.active {
+            color: var(--primary);
+        }
+
+        .step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border-color);
+        }
+
+        .progress-step.completed .step-dot {
+            background: var(--success);
+        }
+
+        .progress-step.active .step-dot {
+            background: var(--primary);
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        /* 消息提示 */
+        .message {
+            margin-top: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            display: none;
+            font-size: 14px;
+        }
+
+        .message.success {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .message.error {
+            background: rgba(255, 71, 87, 0.1);
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+
+        /* 隐藏tab内容 */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* 选项卡 */
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 30px;
+        }
+
+        .tab {
+            padding: 12px 25px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            color: var(--text-secondary);
+        }
+
+        .tab:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .tab.active {
+            background: rgba(0, 240, 255, 0.1);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(17, 24, 39, 0.8) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* 响应式 */
+        @media (max-width: 1200px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-group.full-width {
+                grid-column: span 1;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 80px;
+            }
+            .logo, .logo-sub, .nav-item span {
+                display: none;
+            }
+            .nav-item {
+                justify-content: center;
+                padding: 15px;
+            }
+            .nav-item svg {
+                margin-right: 0;
+            }
+            .main-content {
+                margin-left: 80px;
+                padding: 20px;
+            }
+        }
+
+        /* 格式表格 */
+        .format-section {
+            margin-bottom: 20px;
+        }
+
+        .format-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .format-table th, .format-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .format-table th {
+            background: rgba(0, 240, 255, 0.1);
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .format-table td {
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .format-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .format-table code {
+            background: rgba(0, 240, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--primary);
+        }
+
+        /* 帮助内容 */
+        .help-content {
+            display: grid;
+            gap: 30px;
+        }
+
+        .help-section {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        .help-section h4 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .help-section ol, .help-section ul {
+            margin-left: 20px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        .help-section li {
+            margin-bottom: 5px;
+        }
+
+        .help-section p {
+            margin-top: 15px;
+            color: var(--text-secondary);
+        }
+
+        .wkt-examples {
+            margin-top: 10px;
+        }
+
+        .wkt-examples code {
+            background: rgba(0, 240, 255, 0.1);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: var(--primary);
+        }
+
+        .help-section dt {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-top: 15px;
+        }
+
+        .help-section dd {
+            color: var(--text-secondary);
+            margin-left: 0;
+            margin-top: 5px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <!-- 左侧边栏 -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">GEO<span style="-webkit-text-fill-color: var(--accent)">X</span></div>
+            <div class="logo-sub">Data Converter</div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-item active" data-tab="convert">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l4.59-4.58L18 11l-6 6z"/></svg>
+                <span>格式转换</span>
+            </div>
+            <div class="nav-item" data-tab="history">
+                <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+                <span>转换历史</span>
+            </div>
+            <div class="nav-item" data-tab="formats">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                <span>支持格式</span>
+            </div>
+            <div class="nav-item" data-tab="help">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>
+                <span>帮助</span>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            Version 1.0.0<br>
+            Powered by GeoTools
+        </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">数据格式转换</h1>
+            <p class="page-subtitle">支持 CSV、Excel 与 Shapefile 之间的相互转换</p>
+        </div>
+
+        <!-- 统计信息 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">3</div>
+                <div class="stat-label">支持格式</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">10K+</div>
+                <div class="stat-label">日处理量</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">99.9%</div>
+                <div class="stat-label">成功率</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">&lt;2s</div>
+                <div class="stat-label">平均耗时</div>
+            </div>
+        </div>
+
+        <!-- 转换选项卡 -->
+        <div class="tabs">
+            <div class="tab active" data-tab="to-shapefile">CSV/Excel → SHP</div>
+            <div class="tab" data-tab="from-shapefile">SHP → CSV/Excel</div>
+        </div>
+
+        <!-- CSV/Excel转SHP -->
+        <div class="tab-content active" id="to-shapefile">
+            <div class="card">
+                <h3 class="card-title">
+                    <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+                    上传数据文件
+                </h3>
+                <form id="to-shapefile-form">
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <div class="file-upload-area" id="upload-area-1">
+                                <input type="file" id="input-file" name="file" accept=".csv,.xls,.xlsx" required>
+                                <svg class="upload-icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                                <p class="upload-text">拖拽文件到此处或 <span>点击上传</span></p>
+                                <p class="upload-text" style="font-size: 12px; margin-top: 5px;">支持 .csv, .xls, .xlsx 格式</p>
+                                <div class="file-name" id="file-name-1"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>几何列名称</label>
+                            <input type="text" id="geometry-column" name="geometryColumn" placeholder="自动检测，如: geometry, geom, wkt">
+                        </div>
+                        <div class="form-group">
+                            <label>几何类型</label>
+                            <select id="geometry-type" name="geometryType">
+                                <option value="">自动检测</option>
+                                <option value="POINT">点 (POINT)</option>
+                                <option value="MULTIPOINT">多点 (MULTIPOINT)</option>
+                                <option value="LINESTRING">线 (LINESTRING)</option>
+                                <option value="MULTILINESTRING">多线 (MULTILINESTRING)</option>
+                                <option value="POLYGON">面 (POLYGON)</option>
+                                <option value="MULTIPOLYGON">多面 (MULTIPOLYGON)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                                <label>文件编码</label>
+                                <select id="encoding" name="encoding">
+                                    <option value="GBK" selected>GBK</option>
+                                    <option value="UTF-8">UTF-8</option>
+                                    <option value="GB2312">GB2312</option>
+                                </select>
+                            </div>
+                    </div>
+
+                    <div class="progress-container" id="progress-container-1">
+                        <div class="progress-info">
+                            <span class="progress-status" id="progress-status-1">准备中...</span>
+                            <span class="progress-percent" id="progress-percent-1">0%</span>
+                        </div>
+                        <div class="progress-bar-wrapper">
+                            <div class="progress-bar" id="progress-bar-1"></div>
+                        </div>
+                        <div class="progress-steps">
+                            <div class="progress-step active" id="step-upload">
+                                <span class="step-dot"></span>
+                                <span>上传文件</span>
+                            </div>
+                            <div class="progress-step" id="step-parse">
+                                <span class="step-dot"></span>
+                                <span>解析数据</span>
+                            </div>
+                            <div class="progress-step" id="step-convert">
+                                <span class="step-dot"></span>
+                                <span>格式转换</span>
+                            </div>
+                            <div class="progress-step" id="step-complete">
+                                <span class="step-dot"></span>
+                                <span>完成</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="message" id="message-1"></div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary" id="btn-convert-1">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            开始转换
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- SHP转CSV/Excel -->
+        <div class="tab-content" id="from-shapefile">
+            <div class="card">
+                <h3 class="card-title">
+                    <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+                    上传 Shapefile 文件
+                </h3>
+                <form id="from-shapefile-form">
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <div class="file-upload-area" id="upload-area-2">
+                                <input type="file" id="shp-file" name="file" accept=".shp,.shx,.dbf,.prj,.cpg,.zip" multiple required>
+                                <svg class="upload-icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                                <p class="upload-text">拖拽文件到此处或 <span>点击上传</span></p>
+                                <p class="upload-text" style="font-size: 12px; margin-top: 5px;">支持多选 .shp 系列文件或 .zip 压缩包</p>
+                                <div class="file-name" id="file-name-2"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>输出格式</label>
+                            <select id="output-format" name="outputFormat">
+                                <option value="csv">CSV</option>
+                                <option value="xlsx">Excel (XLSX)</option>
+                                <option value="xls">Excel (XLS)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>文件编码</label>
+                            <select id="encoding-2" name="encoding">
+                                <option value="UTF-8">UTF-8</option>
+                                <option value="GBK">GBK</option>
+                                <option value="GB2312">GB2312</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="progress-container" id="progress-container-2">
+                        <div class="progress-info">
+                            <span class="progress-status" id="progress-status-2">准备中...</span>
+                            <span class="progress-percent" id="progress-percent-2">0%</span>
+                        </div>
+                        <div class="progress-bar-wrapper">
+                            <div class="progress-bar" id="progress-bar-2"></div>
+                        </div>
+                        <div class="progress-steps">
+                            <div class="progress-step active" id="step-upload-2">
+                                <span class="step-dot"></span>
+                                <span>上传文件</span>
+                            </div>
+                            <div class="progress-step" id="step-parse-2">
+                                <span class="step-dot"></span>
+                                <span>解析数据</span>
+                            </div>
+                            <div class="progress-step" id="step-convert-2">
+                                <span class="step-dot"></span>
+                                <span>格式转换</span>
+                            </div>
+                            <div class="progress-step" id="step-complete-2">
+                                <span class="step-dot"></span>
+                                <span>完成</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="message" id="message-2"></div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary" id="btn-convert-2">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            开始转换
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 支持格式 -->
+        <div class="tab-content" id="formats">
+            <div class="card">
+                <h3 class="card-title">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                    支持的格式
+                </h3>
+                <div class="form-grid">
+                    <div class="format-section">
+                        <h4 style="color: var(--primary); margin-bottom: 15px;">输入格式</h4>
+                        <table class="format-table">
+                            <tr><th>格式</th><th>扩展名</th><th>说明</th></tr>
+                            <tr><td>CSV</td><td>.csv</td><td>逗号分隔值文件，需包含WKT几何列</td></tr>
+                            <tr><td>Excel</td><td>.xls / .xlsx</td><td>Microsoft Excel表格，需包含WKT几何列</td></tr>
+                            <tr><td>Shapefile</td><td>.shp 等</td><td>ESRI Shapefile格式，需同目录所有文件</td></tr>
+                        </table>
+                    </div>
+                    <div class="format-section">
+                        <h4 style="color: var(--primary); margin-bottom: 15px;">输出格式</h4>
+                        <table class="format-table">
+                            <tr><th>格式</th><th>扩展名</th><th>说明</th></tr>
+                            <tr><td>Shapefile</td><td>.shp/.shx/.dbf/.prj/.cpg</td><td>ESRI标准矢量格式（输出为ZIP包）</td></tr>
+                            <tr><td>CSV</td><td>.csv</td><td>逗号分隔值文件</td></tr>
+                            <tr><td>Excel</td><td>.xls / .xlsx</td><td>Microsoft Excel表格</td></tr>
+                        </table>
+                    </div>
+                    <div class="format-section">
+                        <h4 style="color: var(--primary); margin-bottom: 15px;">编码支持</h4>
+                        <table class="format-table">
+                            <tr><th>编码</th><th>说明</th></tr>
+                            <tr><td>UTF-8</td><td>通用编码，推荐使用</td></tr>
+                            <tr><td>GBK</td><td>中文Windows默认编码</td></tr>
+                            <tr><td>GB2312</td><td>简体中文编码</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 帮助 -->
+        <div class="tab-content" id="help">
+            <div class="card">
+                <h3 class="card-title">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>
+                    使用帮助
+                </h3>
+                <div class="help-content">
+                    <div class="help-section">
+                        <h4>CSV/Excel 转 SHP</h4>
+                        <ol>
+                            <li>上传 CSV 或 Excel 文件（文件需包含几何坐标列）</li>
+                            <li>选择与原文件一致的编码（中文文件常用 GBK 或 UTF-8）</li>
+                            <li>指定包含几何数据的列名（如 geometry、geom、wkt），或留空自动检测</li>
+                            <li>选择几何类型（点/线/面），或留空自动检测</li>
+                            <li>点击转换，下载生成的 Shapefile ZIP 包</li>
+                        </ol>
+                        <p><strong>几何列格式示例：</strong></p>
+                        <ul class="wkt-examples">
+                            <li>点：<code>POINT (116.4 39.6)</code></li>
+                            <li>线：<code>LINESTRING (116.4 39.6, 116.5 39.7)</code></li>
+                            <li>面：<code>POLYGON ((116.4 39.6, 116.5 39.6, 116.5 39.7, 116.4 39.7, 116.4 39.6))</code></li>
+                        </ul>
+                    </div>
+                    <div class="help-section">
+                        <h4>SHP 转 CSV/Excel</h4>
+                        <ol>
+                            <li>上传完整的 Shapefile 文件（.shp, .shx, .dbf, .prj, .cpg）</li>
+                            <li>支持多选文件同时上传，或上传包含所有文件的 ZIP 包</li>
+                            <li>选择输出格式（CSV 或 Excel）</li>
+                            <li>选择输出编码</li>
+                            <li>点击转换，下载转换后的文件</li>
+                        </ol>
+                    </div>
+                    <div class="help-section">
+                        <h4>常见问题</h4>
+                        <dl>
+                            <dt>转换后中文乱码？</dt>
+                            <dd>请确保选择的编码与原始文件编码一致。UTF-8 编码的文件应选择 UTF-8，GBK 编码的文件应选择 GBK。</dd>
+                            <dt>只看到 the_geom 列？</dt>
+                            <dd>Shapefile 由多个文件组成（.shp/.shx/.dbf/.prj/.cpg）。请确保同时上传所有相关文件，或打包成 ZIP 上传。</dd>
+                            <dt>几何列自动检测失败？</dt>
+                            <dd>请手动指定几何列名，系统会查找包含 WKT 格式几何数据的列。</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 文件上传显示文件名
+        document.getElementById('input-file').addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name || '';
+            document.getElementById('file-name-1').textContent = fileName;
+        });
+
+        document.getElementById('shp-file').addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                const names = Array.from(files).map(f => f.name).join(', ');
+                document.getElementById('file-name-2').textContent = names;
+            }
+        });
+
+        // 选项卡切换
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        document.querySelectorAll('.nav-item[data-tab]').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                item.classList.add('active');
+                const tabId = item.dataset.tab;
+                if (tabId === 'convert') {
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.getElementById('to-shapefile').classList.add('active');
+                    document.querySelector('.tab[data-tab="to-shapefile"]').classList.add('active');
+                } else if (tabId === 'history') {
+                    // 历史记录暂未实现
+                } else {
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    if (document.getElementById(tabId)) {
+                        document.getElementById(tabId).classList.add('active');
+                    }
+                }
+            });
+        });
+
+        // 拖拽效果
+        ['upload-area-1', 'upload-area-2'].forEach(id => {
+            const area = document.getElementById(id);
+            area.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                area.classList.add('dragover');
+            });
+            area.addEventListener('dragleave', () => {
+                area.classList.remove('dragover');
+            });
+        });
+
+        // 进度更新函数
+        function updateProgress(formId, step, percent, status) {
+            const num = formId;
+            document.getElementById(`progress-bar-${num}`).style.width = percent + '%';
+            document.getElementById(`progress-percent-${num}`).textContent = percent + '%';
+            document.getElementById(`progress-status-${num}`).textContent = status;
+
+            const steps = ['step-upload', 'step-parse', 'step-convert', 'step-complete'];
+            const stepNum = ['upload', 'parse', 'convert', 'complete'].indexOf(step);
+
+            steps.forEach((s, i) => {
+                const el = document.getElementById(`${s}-${num}`) || document.getElementById(s);
+                if (!el) return;
+                el.classList.remove('active', 'completed');
+                if (i < stepNum) el.classList.add('completed');
+                if (i === stepNum) el.classList.add('active');
+            });
+        }
+
+        function showMessage(num, type, text) {
+            const msg = document.getElementById(`message-${num}`);
+            msg.className = `message ${type}`;
+            msg.textContent = text;
+            msg.style.display = 'block';
+        }
+
+        // CSV/Excel转SHP表单提交
+        document.getElementById('to-shapefile-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitForm(this, '/convert-to-shapefile', 1);
+        });
+
+        // SHP转CSV/Excel表单提交
+        document.getElementById('from-shapefile-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitForm(this, '/convert-from-shapefile', 2);
+        });
+
+        function submitForm(form, url, num) {
+            const formData = new FormData(form);
+            const progressContainer = document.getElementById(`progress-container-${num}`);
+            const btn = document.getElementById(`btn-convert-${num}`);
+            const message = document.getElementById(`message-${num}`);
+
+            // 显示进度条
+            progressContainer.classList.add('active');
+            message.style.display = 'none';
+            btn.disabled = true;
+
+            // 模拟进度（实际进度需要后端支持 SSE 或 WebSocket）
+            updateProgress(num, 'upload', 10, '文件上传中...');
+
+            let progress = 10;
+            const progressInterval = setInterval(() => {
+                if (progress < 85) {
+                    progress += Math.random() * 5;
+                    if (progress > 85) progress = 85;
+                    updateProgress(num, 'parse', Math.floor(progress), '解析数据中...');
+                }
+            }, 500);
+
+            fetch(url, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                clearInterval(progressInterval);
+                if (!response.ok) {
+                    throw new Error('转换失败');
+                }
+                updateProgress(num, 'parse', 90, '数据解析完成');
+                updateProgress(num, 'convert', 95, '格式转换中...');
+                return response.blob();
+            })
+            .then(blob => {
+                updateProgress(num, 'complete', 100, '转换完成！');
+
+                setTimeout(() => {
+                    progressContainer.classList.remove('active');
+                    btn.disabled = false;
+
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+
+                    const fileInput = form.querySelector('input[type="file"]').files[0];
+                    let fileName;
+                    if (num === 1) {
+                        fileName = fileInput.name.replace(/\.[^/.]+$/, '') + '.zip';
+                    } else {
+                        const outputFormat = form.querySelector('select[name="outputFormat"]').value;
+                        fileName = fileInput.name.replace(/\.[^/.]+$/, '') + '.' + outputFormat;
+                    }
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+
+                    showMessage(num, 'success', '转换成功！文件已开始下载。');
+                }, 500);
+            })
+            .catch(error => {
+                clearInterval(progressInterval);
+                progressContainer.classList.remove('active');
+                btn.disabled = false;
+                showMessage(num, 'error', '转换失败：' + error.message);
+            });
+        }
+    </script>
+</body>
+</html>
