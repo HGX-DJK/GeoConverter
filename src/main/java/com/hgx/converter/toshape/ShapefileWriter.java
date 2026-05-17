@@ -80,9 +80,16 @@ public class ShapefileWriter {
             List<SimpleFeature> batch = new ArrayList<>(BATCH_SIZE);
             int fid = 0;
 
+            org.geotools.feature.simple.SimpleFeatureBuilder featureBuilder =
+                new org.geotools.feature.simple.SimpleFeatureBuilder(schema);
+
             for (FeatureData featureData : features) {
                 if (featureData.getGeometry() != null) {
-                    batch.add(buildFeature(schema, featureData, attributeColumns, fid++));
+                    featureBuilder.add(featureData.getGeometry());
+                    for (String col : attributeColumns) {
+                        featureBuilder.add(featureData.getAttributeValue(col));
+                    }
+                    batch.add(featureBuilder.buildFeature(String.valueOf(fid++)));
 
                     if (batch.size() >= BATCH_SIZE) {
                         flushBatch(featureStore, batch);
@@ -148,13 +155,18 @@ public class ShapefileWriter {
             List<SimpleFeature> batch = new ArrayList<>(BATCH_SIZE);
             final int[] fid = {0};
 
+            org.geotools.feature.simple.SimpleFeatureBuilder featureBuilder =
+                new org.geotools.feature.simple.SimpleFeatureBuilder(schema);
+
             reader.readStream(feature -> {
                 String wkt = feature.getAttributeValues()[geometryColumnIndex];
-                Geometry geometry = geometryParser.parse
-                        (wkt);
+                Geometry geometry = geometryParser.parse(wkt);
                 if (geometry != null) {
-                    feature.setGeometry(geometry);
-                    SimpleFeature simpleFeature = buildFeature(schema, feature, attributeColumns, fid[0]++);
+                    featureBuilder.add(geometry);
+                    for (String col : attributeColumns) {
+                        featureBuilder.add(feature.getAttributeValue(col));
+                    }
+                    SimpleFeature simpleFeature = featureBuilder.buildFeature(String.valueOf(fid[0]++));
                     batch.add(simpleFeature);
 
                     if (batch.size() >= BATCH_SIZE) {
@@ -282,17 +294,5 @@ public class ShapefileWriter {
         return "attr_" + Math.abs(original.hashCode() % 10000);
     }
 
-    private SimpleFeature buildFeature(SimpleFeatureType schema, FeatureData data,
-                                        List<String> attributeColumns, int fid) {
-        org.geotools.feature.simple.SimpleFeatureBuilder featureBuilder =
-            new org.geotools.feature.simple.SimpleFeatureBuilder(schema);
 
-        featureBuilder.add(data.getGeometry());
-
-        for (String col : attributeColumns) {
-            featureBuilder.add(data.getAttributeValue(col));
-        }
-
-        return featureBuilder.buildFeature(fid + "");
-    }
 }

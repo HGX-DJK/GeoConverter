@@ -3,6 +3,7 @@ package com.hgx.converter.fromshape;
 import com.hgx.model.FeatureData;
 import com.hgx.converter.DataWriter;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 
@@ -25,7 +26,7 @@ public class ExcelDataWriter implements DataWriter {
         String filename = file.getName().toLowerCase();
 
         if (filename.endsWith(".xlsx")) {
-            workbook = new XSSFWorkbook();
+            workbook = new SXSSFWorkbook(100); // 内存中只保留100行，其余刷入临时文件
         } else if (filename.endsWith(".xls")) {
             workbook = new HSSFWorkbook();
         } else {
@@ -53,14 +54,13 @@ public class ExcelDataWriter implements DataWriter {
             }
         }
 
-        // 自动调整列宽
-        for (int i = 0; i < columnNames.length; i++) {
-            sheet.autoSizeColumn(i);
-        }
-
         // 写入文件
         try (FileOutputStream fos = new FileOutputStream(file)) {
             workbook.write(fos);
+        }
+
+        if (workbook instanceof SXSSFWorkbook) {
+            ((SXSSFWorkbook) workbook).dispose(); // 清理临时文件
         }
     }
 
