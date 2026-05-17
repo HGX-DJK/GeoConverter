@@ -42,52 +42,33 @@ public class ConverterService {
             throw new IOException("Unsupported file format. Use .csv, .xls, or .xlsx");
         }
 
-        // 创建流式读取器
-        StreamingReader reader;
-        if (isCsv) {
-            reader = new StreamingCsvReader(inputFile, inputEncoding);
-        } else {
-            reader = new StreamingExcelReader(inputFile);
-        }
-
-        // 预读取列名
-        String[] columnNames = reader.getColumnNames();
-        if (columnNames == null || columnNames.length == 0) {
-            throw new IOException("No columns found in file");
-        }
-
-        // 检测几何列
-        int geometryColumnIndex = detectGeometryColumn(reader, geometryColumn, columnNames);
-
-        // 重新打开读取器进行完整流式处理
-        if (isCsv) {
-            reader = new StreamingCsvReader(inputFile, inputEncoding);
-        } else {
-            reader = new StreamingExcelReader(inputFile);
-        }
-
-        // 采样检测几何类型
-        GeometryType detectedGeometryType = detectGeometryType(reader, geometryColumnIndex, geometryType);
-
-        // 再次重新打开读取器进行完整流式写入
-        if (isCsv) {
-            reader = new StreamingCsvReader(inputFile, inputEncoding);
-        } else {
-            reader = new StreamingExcelReader(inputFile);
-        }
-
-        // 属性列（排除几何列）
-        List<String> attributeColumns = new ArrayList<>();
-        for (int i = 0; i < columnNames.length; i++) {
-            if (i != geometryColumnIndex) {
-                attributeColumns.add(columnNames[i]);
-            }
-        }
-
         File outputShp = new File(outputDir, getBaseName(inputFile) + ".shp");
         ShapefileWriter shpWriter = new ShapefileWriter();
         WktGeometryParser geometryParser = new WktGeometryParser();
-        shpWriter.writeStream(reader, outputShp, detectedGeometryType, attributeColumns, outputEncoding, geometryParser, geometryColumnIndex);
+
+        try (StreamingReader reader = isCsv ? new StreamingCsvReader(inputFile, inputEncoding) : new StreamingExcelReader(inputFile)) {
+            // 预读取列名
+            String[] columnNames = reader.getColumnNames();
+            if (columnNames == null || columnNames.length == 0) {
+                throw new IOException("No columns found in file");
+            }
+
+            // 检测几何列
+            int geometryColumnIndex = detectGeometryColumn(reader, geometryColumn, columnNames);
+
+            // 采样检测几何类型
+            GeometryType detectedGeometryType = detectGeometryType(reader, geometryColumnIndex, geometryType);
+
+            // 属性列（排除几何列）
+            List<String> attributeColumns = new ArrayList<>();
+            for (int i = 0; i < columnNames.length; i++) {
+                if (i != geometryColumnIndex) {
+                    attributeColumns.add(columnNames[i]);
+                }
+            }
+
+            shpWriter.writeStream(reader, outputShp, detectedGeometryType, attributeColumns, outputEncoding, geometryParser, geometryColumnIndex);
+        }
 
         return outputShp;
     }
@@ -123,7 +104,7 @@ public class ConverterService {
                         }
                     }
                 }
-            });
+            }, GEOMETRY_SAMPLE_SIZE);
         } catch (IOException e) {
             // rethrow
         }
@@ -165,7 +146,7 @@ public class ConverterService {
                 }
                 sampleCount[0]++;
             }
-        });
+        }, GEOMETRY_SAMPLE_SIZE);
 
         if (detectedType[0] == null) {
             return GeometryType.POINT;
@@ -178,18 +159,15 @@ public class ConverterService {
             throw new IOException("Input file not found: " + inputFile);
         }
 
-        ShapefileReader reader = new ShapefileReader(inputFile);
         List<FeatureData> features;
-        try {
+        String[] columnNames;
+        try (ShapefileReader reader = new ShapefileReader(inputFile)) {
             features = reader.readAll();
-        } finally {
-            reader.close();
+            columnNames = reader.getColumnNames();
         }
 
-        String[] columnNames = reader.getColumnNames();
-
-        DataWriter writer;
         String outputName = outputFile.getName().toLowerCase();
+        DataWriter writer;
         if (outputName.endsWith(".csv")) {
             writer = new CsvDataWriter(outputFile, encoding);
         } else if (outputName.endsWith(".xls") || outputName.endsWith(".xlsx")) {
@@ -198,10 +176,8 @@ public class ConverterService {
             throw new IOException("Unsupported output format. Use .csv, .xls, or .xlsx");
         }
 
-        try {
-            writer.write(features, columnNames);
-        } finally {
-            writer.close();
+        try (DataWriter autoClosedWriter = writer) {
+            autoClosedWriter.write(features, columnNames);
         }
 
         return outputFile;

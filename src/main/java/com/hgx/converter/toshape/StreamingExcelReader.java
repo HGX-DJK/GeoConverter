@@ -61,6 +61,11 @@ public class StreamingExcelReader implements StreamingReader {
 
     @Override
     public void readStream(FeatureConsumer consumer) throws IOException {
+        readStream(consumer, -1);
+    }
+
+    @Override
+    public void readStream(FeatureConsumer consumer, int limit) throws IOException {
         ensureInitialized();
 
         try (InputStream fis = new FileInputStream(file)) {
@@ -70,7 +75,11 @@ public class StreamingExcelReader implements StreamingReader {
             try {
                 Sheet sheet = workbook.getSheetAt(0);
                 int lastRowNum = sheet.getLastRowNum();
+                int rowCount = 0;
                 for (int rowNum = 1; rowNum <= lastRowNum; rowNum++) {
+                    if (limit > 0 && rowCount >= limit) {
+                        break;
+                    }
                     Row row = sheet.getRow(rowNum);
                     if (row == null) continue;
 
@@ -80,6 +89,7 @@ public class StreamingExcelReader implements StreamingReader {
                     }
                     FeatureData feature = new FeatureData(columnNames, rowData);
                     consumer.accept(feature);
+                    rowCount++;
                 }
             } catch (WktGeometryParser.WktParseException e) {
                 throw new RuntimeException(e);

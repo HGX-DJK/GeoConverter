@@ -19,6 +19,14 @@ public interface StreamingReader extends AutoCloseable {
     void readStream(FeatureConsumer consumer) throws IOException;
 
     /**
+     * 流式读取数据，可选限制行数（用于采样检测）
+     * @param consumer 数据消费者
+     * @param limit 限制读取的行数（不含表头），-1 表示不限制
+     * @throws IOException if read error occurs
+     */
+    void readStream(FeatureConsumer consumer, int limit) throws IOException;
+
+    /**
      * 获取列名（需在 readStream 之前调用或在使用前预加载）
      */
     String[] getColumnNames() throws IOException;
