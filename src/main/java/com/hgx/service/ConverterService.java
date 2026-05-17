@@ -26,7 +26,7 @@ public class ConverterService {
 
     private static final int GEOMETRY_SAMPLE_SIZE = 100;
 
-    public File convertToShapefile(File inputFile, File outputDir, String geometryColumn, GeometryType geometryType, String encoding) throws Exception {
+    public File convertToShapefile(File inputFile, File outputDir, String geometryColumn, GeometryType geometryType, String inputEncoding, String outputEncoding) throws Exception {
         if (!inputFile.exists()) {
             throw new IOException("Input file not found: " + inputFile);
         }
@@ -45,7 +45,7 @@ public class ConverterService {
         // 创建流式读取器
         StreamingReader reader;
         if (isCsv) {
-            reader = new StreamingCsvReader(inputFile, encoding);
+            reader = new StreamingCsvReader(inputFile, inputEncoding);
         } else {
             reader = new StreamingExcelReader(inputFile);
         }
@@ -61,7 +61,7 @@ public class ConverterService {
 
         // 重新打开读取器进行完整流式处理
         if (isCsv) {
-            reader = new StreamingCsvReader(inputFile, encoding);
+            reader = new StreamingCsvReader(inputFile, inputEncoding);
         } else {
             reader = new StreamingExcelReader(inputFile);
         }
@@ -71,7 +71,7 @@ public class ConverterService {
 
         // 再次重新打开读取器进行完整流式写入
         if (isCsv) {
-            reader = new StreamingCsvReader(inputFile, encoding);
+            reader = new StreamingCsvReader(inputFile, inputEncoding);
         } else {
             reader = new StreamingExcelReader(inputFile);
         }
@@ -87,7 +87,7 @@ public class ConverterService {
         File outputShp = new File(outputDir, getBaseName(inputFile) + ".shp");
         ShapefileWriter shpWriter = new ShapefileWriter();
         WktGeometryParser geometryParser = new WktGeometryParser();
-        shpWriter.writeStream(reader, outputShp, detectedGeometryType, attributeColumns, encoding, geometryParser, geometryColumnIndex);
+        shpWriter.writeStream(reader, outputShp, detectedGeometryType, attributeColumns, outputEncoding, geometryParser, geometryColumnIndex);
 
         return outputShp;
     }

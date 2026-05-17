@@ -761,13 +761,21 @@
                             </select>
                         </div>
                         <div class="form-group">
-                                <label>文件编码</label>
-                                <select id="encoding" name="encoding">
-                                    <option value="GBK" selected>GBK</option>
-                                    <option value="UTF-8">UTF-8</option>
-                                    <option value="GB2312">GB2312</option>
-                                </select>
-                            </div>
+                            <label>源文件编码 (输入CSV/Excel)</label>
+                            <select id="input-encoding" name="inputEncoding">
+                                <option value="UTF-8" selected>UTF-8</option>
+                                <option value="GBK">GBK (包含中文)</option>
+                                <option value="GB2312">GB2312</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>目标SHP编码 (输出Shapefile)</label>
+                            <select id="output-encoding" name="outputEncoding">
+                                <option value="GBK" selected>GBK (ArcMap兼容推荐)</option>
+                                <option value="UTF-8">UTF-8</option>
+                                <option value="GB2312">GB2312</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="progress-container" id="progress-container-1">

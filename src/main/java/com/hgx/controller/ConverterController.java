@@ -60,7 +60,8 @@ public class ConverterController {
             @RequestPart("file") MultipartFile file,
             @RequestParam(value = "geometryColumn", required = false) String geometryColumn,
             @RequestParam(value = "geometryType", required = false) String geometryTypeStr,
-            @RequestParam(value = "encoding", defaultValue = "UTF-8") String encoding) throws Exception {
+            @RequestParam(value = "inputEncoding", defaultValue = "UTF-8") String inputEncoding,
+            @RequestParam(value = "outputEncoding", defaultValue = "GBK") String outputEncoding) throws Exception {
 
         if (file.isEmpty()) {
             throw new IOException("Uploaded file is empty");
@@ -80,7 +81,7 @@ public class ConverterController {
             outputDirectory.mkdirs();
         }
 
-        File outputShp = converterService.convertToShapefile(inputFile, outputDirectory, geometryColumn, geometryType, encoding);
+        File outputShp = converterService.convertToShapefile(inputFile, outputDirectory, geometryColumn, geometryType, inputEncoding, outputEncoding);
 
         String zipFileName = getBaseName(file.getOriginalFilename()) + ".zip";
         File zipFile = createZipFile(outputDirectory, zipFileName);

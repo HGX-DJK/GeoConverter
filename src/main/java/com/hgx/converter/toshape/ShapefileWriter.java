@@ -43,7 +43,7 @@ public class ShapefileWriter {
     public void write(List<FeatureData> features, File outputFile,
                       GeometryType geometryType, List<String> attributeColumns)
             throws IOException {
-        write(features, outputFile, geometryType, attributeColumns, "GBK");
+        write(features, outputFile, geometryType, attributeColumns, "UTF-8");
     }
 
     public void write(List<FeatureData> features, File outputFile,
@@ -55,7 +55,7 @@ public class ShapefileWriter {
             throw new IOException("No features to write");
         }
 
-        SimpleFeatureType schema = buildFeatureType(geometryType, attributeColumns);
+        SimpleFeatureType schema = buildFeatureType(geometryType, attributeColumns, encoding);
 
         ShapefileDataStoreFactory factory = new ShapefileDataStoreFactory();
         Map<String, Serializable> params = new HashMap<>();
@@ -124,7 +124,7 @@ public class ShapefileWriter {
                            int geometryColumnIndex)
             throws Exception {
 
-        SimpleFeatureType schema = buildFeatureType(geometryType, attributeColumns);
+        SimpleFeatureType schema = buildFeatureType(geometryType, attributeColumns, encoding);
 
         ShapefileDataStoreFactory factory = new ShapefileDataStoreFactory();
         Map<String, Serializable> params = new HashMap<>();
@@ -197,7 +197,8 @@ public class ShapefileWriter {
     }
 
     private SimpleFeatureType buildFeatureType(GeometryType geometryType,
-                                               List<String> attributeColumns) {
+                                               List<String> attributeColumns,
+                                               String encoding) {
         SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder();
         builder.setName("Feature");
 
@@ -234,7 +235,7 @@ public class ShapefileWriter {
         Set<String> usedNames = new HashSet<>();
         usedNames.add("the_geom");
         for (String col : attributeColumns) {
-            String shortName = makeShortName(col, usedNames);
+            String shortName = makeShortName(col, usedNames, encoding);
             usedNames.add(shortName);
             builder.add(shortName, String.class);
         }
@@ -242,19 +243,40 @@ public class ShapefileWriter {
         return builder.buildFeatureType();
     }
 
-    private String makeShortName(String original, Set<String> used) {
-        String shortName = original.length() > 10 ? original.substring(0, 10) : original;
-        shortName = shortName.replaceAll("[^a-zA-Z0-9_]", "_");
+    private String makeShortName(String original, Set<String> used, String encoding) {
+        String shortName = original.replaceAll("[^a-zA-Z0-9_\\u4e00-\\u9fa5]", "_");
+        
+        try {
+            while (shortName.getBytes(encoding).length > 10 && shortName.length() > 0) {
+                shortName = shortName.substring(0, shortName.length() - 1);
+            }
+        } catch (Exception e) {
+            shortName = shortName.length() > 10 ? shortName.substring(0, 10) : shortName;
+        }
+
+        if (shortName.isEmpty()) {
+            shortName = "col";
+        }
 
         if (!used.contains(shortName)) {
             return shortName;
         }
         for (int i = 1; i < 100; i++) {
-            String candidate = shortName.length() >= 8
-                ? shortName.substring(0, 8) + i
-                : shortName + i;
-            if (!used.contains(candidate)) {
-                return candidate;
+            String suffix = String.valueOf(i);
+            String candidate = shortName;
+            try {
+                while ((candidate + suffix).getBytes(encoding).length > 10 && candidate.length() > 0) {
+                    candidate = candidate.substring(0, candidate.length() - 1);
+                }
+            } catch (Exception e) {
+                candidate = candidate.length() >= 8 ? candidate.substring(0, 8) : candidate;
+            }
+            if (candidate.isEmpty()) {
+                candidate = "c";
+            }
+            String finalCandidate = candidate + suffix;
+            if (!used.contains(finalCandidate)) {
+                return finalCandidate;
             }
         }
         return "attr_" + Math.abs(original.hashCode() % 10000);
